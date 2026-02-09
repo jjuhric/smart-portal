@@ -175,13 +175,15 @@ else
     fail "Dnsmasq Config Error"
 fi
 
-# Verify Local Domain
+# Verify Local Domain (Dynamic Check)
+# We use the domain defined in .env
 RESOLVED_IP=$(getent hosts $DOMAIN | awk '{ print $1 }')
 if [ "$RESOLVED_IP" == "$GATEWAY_IP" ]; then
     pass "Domain $DOMAIN resolves to $RESOLVED_IP"
 else
-    fail "Domain Resolution Failed (Got: '$RESOLVED_IP')"
+    fail "Domain Resolution Failed (Expected $GATEWAY_IP, Got: '$RESOLVED_IP')"
 fi
 
 echo -e "\n=============================================="
 echo -e "   VERIFICATION COMPLETE"
+echo -e "=============================================="

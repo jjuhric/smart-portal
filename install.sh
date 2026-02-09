@@ -1,6 +1,6 @@
 #!/bin/bash
 # SMART PORTAL V6 PRODUCTION INSTALLER
-# Fixes: Auto-generates secrets BEFORE starting DB to prevent password mismatch.
+# Fixes: Uses portal.wifi, NUKES old data to prevent password mismatch.
 # Usage: sudo bash install.sh
 
 if [ "$EUID" -ne 0 ]; then echo "Run as root."; exit 1; fi
@@ -23,14 +23,13 @@ cd $APP_DIR
 echo "[3/7] Installing Node Modules..."
 npm install
 
-# 4. Generate Secrets & Config (The Fix)
+# 4. Generate Secrets & Config
 echo "[4/7] Configuring Secrets..."
 if [ ! -f .env ]; then
-    # Generate random passwords if .env doesn't exist
     DB_PASS=$(openssl rand -hex 12)
-    ADMIN_PASS="Jeffery#3218" # Default admin password
     SESSION_SECRET=$(openssl rand -hex 32)
     
+    # We write the file with the NEW domain
     cat > .env <<EOF
 DB_USER=portal_admin
 DB_HOST=127.0.0.1
@@ -39,14 +38,14 @@ DB_PASS=$DB_PASS
 DB_PORT=5432
 SESSION_SECRET=$SESSION_SECRET
 GATEWAY_IP=192.168.10.1
-DOMAIN=home.local
+DOMAIN=portal.wifi
 WLAN_IFACE=wlan0
 ADMIN_USER=jeffery-uhrick
 EOF
     echo "Generated new .env file."
 fi
 
-# Load the secrets immediately so Docker uses them
+# Load the secrets immediately
 source .env
 
 # 5. Configure Networking
@@ -64,12 +63,14 @@ sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default
 echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-portal.conf
 sysctl -p /etc/sysctl.d/99-portal.conf
 
-# 6. Database Setup
+# 6. Database Setup (The Clean Start)
 echo "[6/7] Starting Database..."
-# Cleanup old containers to ensure fresh start
+# AGGRESSIVELY remove old data to prevent password conflicts
 docker stop portal_db 2>/dev/null || true
 docker rm portal_db 2>/dev/null || true
-# Launch with the LOADED password
+docker volume rm portal_data 2>/dev/null || true
+
+# Launch with the correct password
 docker run -d --name portal_db --restart always \
   -e POSTGRES_PASSWORD=$DB_PASS \
   -e POSTGRES_USER=$DB_USER \
@@ -79,7 +80,7 @@ docker run -d --name portal_db --restart always \
   postgres:alpine
 
 echo "Waiting for Database to initialize..."
-sleep 10 # Wait for Postgres to actually boot
+sleep 10 
 
 # Run Schema Init
 node src/init_db.js
@@ -95,5 +96,6 @@ systemctl start smart-portal
 echo "--- INSTALL COMPLETE ---"
 echo "Admin User: jeffery-uhrick"
 echo "Admin Pass: Jeffery#3218"
+echo "URL:        http://portal.wifi"
 echo "Wifi SSID:  Uhrick-Home-Wifi"
 echo "You can check status with: sudo bash verify_install.sh"
