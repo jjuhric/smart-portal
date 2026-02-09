@@ -16,9 +16,10 @@ ip link set dev $WLAN up
 systemctl restart hostapd
 systemctl restart dnsmasq
 
-# 3. Firewall Plumbing
+# 3. Firewall Plumbing (The Fix)
 iptables -F
 iptables -t nat -F
+iptables -X
 echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # Auto-detect Internet Interface
@@ -26,11 +27,15 @@ INTERNET=$(ip route | grep default | awk '{print $5}' | head -n1)
 [ -z "$INTERNET" ] && INTERNET="end0"
 iptables -t nat -A POSTROUTING -o $INTERNET -j MASQUERADE
 
-# Captive Portal Traps
+# --- CRITICAL: Allow DNS First ---
 iptables -A FORWARD -p udp --dport 53 -j ACCEPT
 iptables -A FORWARD -p tcp --dport 53 -j ACCEPT
+
+# Captive Portal Traps
 iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 iptables -t nat -A PREROUTING -i $WLAN -p tcp --dport 80 -j DNAT --to-destination $GATEWAY:80
+
+# Block everything else (The "Walled Garden")
 iptables -A FORWARD -i $WLAN -p tcp --dport 443 -j REJECT --reject-with tcp-reset
 iptables -A FORWARD -i $WLAN -j DROP
 
