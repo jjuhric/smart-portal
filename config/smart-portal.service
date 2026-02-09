@@ -1,5 +1,5 @@
 [Unit]
-Description=Smart Portal V6
+Description=Smart Portal
 After=network.target docker.service
 [Service]
 ExecStart=/opt/smart-portal/src/startup.sh

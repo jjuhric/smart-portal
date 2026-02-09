@@ -219,4 +219,4 @@ async function restoreState() {
     });
     setTimeout(syncTrafficControl, 2000);
 }
-app.listen(PORT, () => { console.log('V6 Server Started'); setTimeout(restoreState, 5000); });
+app.listen(PORT, () => { console.log('Smart Home Server Started'); setTimeout(restoreState, 5000); });
