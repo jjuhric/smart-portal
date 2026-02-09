@@ -1,6 +1,6 @@
 #!/bin/bash
 # SMART PORTAL V6 PRODUCTION INSTALLER
-# Fixes: Restarts Docker to restore iptables chains deleted by uninstall.sh
+# Fixes: Forces Docker to rebuild missing iptables chains by deleting docker0 bridge.
 # Usage: sudo bash install.sh
 
 if [ "$EUID" -ne 0 ]; then echo "Run as root."; exit 1; fi
@@ -22,7 +22,7 @@ cd $APP_DIR
 # 3. Install Node Modules
 echo "[3/7] Installing Node Modules..."
 npm install
-# npm audit fix --force || true # Optional: Uncomment if you want to force fix audits
+# npm audit fix --force || true 
 
 # 4. Generate Secrets & Config
 echo "[4/7] Configuring Secrets..."
@@ -44,8 +44,6 @@ ADMIN_USER=jeffery-uhrick
 EOF
     echo "Generated new .env file."
 fi
-
-# Load the secrets immediately
 source .env
 
 # 5. Configure Networking
@@ -66,18 +64,30 @@ sysctl -p /etc/sysctl.d/99-portal.conf
 # 6. Database Setup
 echo "[6/7] Starting Database..."
 
-# --- THE FIX IS HERE ---
-echo "Restoring Docker Network Chains..."
-systemctl restart docker
-sleep 5 # Give Docker a moment to rebuild iptables
-# -----------------------
+# --- NUCLEAR NETWORK FIX ---
+echo "Repairing Docker Network Stack..."
+systemctl stop docker
+# Force delete the bridge so Docker MUST recreate it + firewall rules
+ip link del docker0 2>/dev/null || true
+systemctl start docker
 
-# Clean start
+echo "Waiting for Docker Firewall Chains..."
+# Loop until the firewall chain actually exists
+for i in {1..10}; do
+    if iptables -L DOCKER >/dev/null 2>&1; then
+        echo "Docker Chain detected."
+        break
+    fi
+    echo "Waiting for Docker network... ($i/10)"
+    sleep 2
+done
+# ---------------------------
+
 docker stop portal_db 2>/dev/null || true
 docker rm portal_db 2>/dev/null || true
 docker volume rm portal_data 2>/dev/null || true
 
-# Launch with the correct password
+# Launch Database
 docker run -d --name portal_db --restart always \
   -e POSTGRES_PASSWORD=$DB_PASS \
   -e POSTGRES_USER=$DB_USER \
