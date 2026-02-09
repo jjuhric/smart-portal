@@ -1,6 +1,6 @@
 #!/bin/bash
 # SMART PORTAL V6 PRODUCTION INSTALLER
-# Fixes: Uses portal.wifi, NUKES old data to prevent password mismatch.
+# Fixes: Restarts Docker to restore iptables chains deleted by uninstall.sh
 # Usage: sudo bash install.sh
 
 if [ "$EUID" -ne 0 ]; then echo "Run as root."; exit 1; fi
@@ -22,6 +22,7 @@ cd $APP_DIR
 # 3. Install Node Modules
 echo "[3/7] Installing Node Modules..."
 npm install
+# npm audit fix --force || true # Optional: Uncomment if you want to force fix audits
 
 # 4. Generate Secrets & Config
 echo "[4/7] Configuring Secrets..."
@@ -29,7 +30,6 @@ if [ ! -f .env ]; then
     DB_PASS=$(openssl rand -hex 12)
     SESSION_SECRET=$(openssl rand -hex 32)
     
-    # We write the file with the NEW domain
     cat > .env <<EOF
 DB_USER=portal_admin
 DB_HOST=127.0.0.1
@@ -63,9 +63,16 @@ sed -i 's|#DAEMON_CONF=""|DAEMON_CONF="/etc/hostapd/hostapd.conf"|' /etc/default
 echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-portal.conf
 sysctl -p /etc/sysctl.d/99-portal.conf
 
-# 6. Database Setup (The Clean Start)
+# 6. Database Setup
 echo "[6/7] Starting Database..."
-# AGGRESSIVELY remove old data to prevent password conflicts
+
+# --- THE FIX IS HERE ---
+echo "Restoring Docker Network Chains..."
+systemctl restart docker
+sleep 5 # Give Docker a moment to rebuild iptables
+# -----------------------
+
+# Clean start
 docker stop portal_db 2>/dev/null || true
 docker rm portal_db 2>/dev/null || true
 docker volume rm portal_data 2>/dev/null || true
