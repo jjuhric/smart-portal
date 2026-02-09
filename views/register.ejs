@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Register</title>
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            font-family: sans-serif;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            background: rgba(255, 255, 255, 0.95);
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card text-center">
+        <h3 class="mb-3 text-success fw-bold">New Account</h3>
+        <% if(message){ %>
+            <div class="alert alert-warning py-2 small">
+                <%= message %>
+            </div>
+            <% } %>
+                <form action="/register" method="POST">
+                    <div class="form-floating mb-2"><input type="text" name="username" class="form-control" id="ru"
+                            placeholder="User"><label for="ru">Choose Username</label></div>
+                    <div class="form-floating mb-3"><input type="password" name="password" class="form-control" id="rp"
+                            placeholder="Pass"><label for="rp">Choose Password</label></div><button
+                        class="btn btn-success w-100 rounded-pill py-2 fw-bold">Sign Up</button>
+                </form>
+                <div class="mt-3"><a href="/" class="text-decoration-none text-muted">Back to Login</a></div>
+    </div>
+</body>
+
+</html>

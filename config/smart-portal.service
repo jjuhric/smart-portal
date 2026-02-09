@@ -1,0 +1,10 @@
+[Unit]
+Description=Smart Portal V6
+After=network.target docker.service
+[Service]
+ExecStart=/opt/smart-portal/src/startup.sh
+WorkingDirectory=/opt/smart-portal
+Restart=always
+User=root
+[Install]
+WantedBy=multi-user.target
